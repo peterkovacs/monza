@@ -3,6 +3,8 @@ require 'active_support/core_ext/time'
 
 module Monza
   class TransactionReceipt
+    using BoolTypecasting
+
     # Receipt Fields Documentation
     # https://developer.apple.com/library/ios/releasenotes/General/ValidateAppStoreReceipt/Chapters/ReceiptFields.html#//apple_ref/doc/uid/TP40010573-CH106-SW1
 
@@ -24,9 +26,15 @@ module Monza
     attr_reader :is_trial_period
     attr_reader :is_in_intro_offer_period
     attr_reader :subscription_group_identifier
+    attr_reader :cancellation_reason
     attr_reader :cancellation_date
+    attr_reader :cancellation_date_ms
+    attr_reader :cancellation_date_pst
+    attr_reader :is_in_intro_offer_period
+    attr_reader :original_attributes
 
     def initialize(attributes)
+      @original_attributes = attributes
       @quantity = attributes['quantity'].to_i
       @product_id = attributes['product_id']
       @transaction_id = attributes['transaction_id']
@@ -38,6 +46,10 @@ module Monza
       @original_purchase_date_ms = Time.zone.at(attributes['original_purchase_date_ms'].to_i / 1000)
       @original_purchase_date_pst = DateTime.parse(attributes['original_purchase_date_pst'].gsub("America/Los_Angeles","PST")) if attributes['original_purchase_date_pst']
       @web_order_line_item_id = attributes['web_order_line_item_id']
+      @cancellation_reason = attributes['cancellation_reason'] if attributes['cancellation_reason']
+      @cancellation_date = DateTime.parse(attributes['cancellation_date']) if attributes['cancellation_date']
+      @cancellation_date_ms = Time.zone.at(attributes['cancellation_date_ms'].to_i / 1000) if attributes['cancellation_date_ms']
+      @cancellation_date_pst = DateTime.parse(attributes['cancellation_date_pst'].gsub("America/Los_Angeles","PST")) if attributes['cancellation_date_pst']
 
       if attributes['expires_date']
         begin
