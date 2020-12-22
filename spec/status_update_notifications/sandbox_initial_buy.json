@@ -1,0 +1,43 @@
+{
+  "unified_receipt": {
+    "latest_receipt": "<base64 receipt data>",
+    "pending_renewal_info": [
+      {
+        "original_transaction_id": "1000000740797634",
+        "product_id": "product_id.quarterly",
+        "auto_renew_status": "1",
+        "auto_renew_product_id": "product_id.quarterly"
+      }
+    ],
+    "environment": "Sandbox",
+    "status": 0,
+    "latest_receipt_info": [
+      {
+        "expires_date_pst": "2020-11-11 07:50:28 America/Los_Angeles",
+        "purchase_date": "2020-11-11 15:45:28 Etc/GMT",
+        "purchase_date_ms": "1605109528000",
+        "original_purchase_date_ms": "1605109530000",
+        "transaction_id": "1000000740797634",
+        "original_transaction_id": "1000000740797634",
+        "quantity": "1",
+        "expires_date_ms": "1605109828000",
+        "original_purchase_date_pst": "2020-11-11 07:45:30 America/Los_Angeles",
+        "product_id": "product_id.quarterly",
+        "subscription_group_identifier": "20654194",
+        "web_order_line_item_id": "1000000057296355",
+        "expires_date": "2020-11-11 15:50:28 Etc/GMT",
+        "is_in_intro_offer_period": "false",
+        "original_purchase_date": "2020-11-11 15:45:30 Etc/GMT",
+        "purchase_date_pst": "2020-11-11 07:45:28 America/Los_Angeles",
+        "is_trial_period": "false"
+      }
+    ]
+  },
+  "environment": "Sandbox",
+  "auto_renew_status": "true",
+  "bvrs": "1004",
+  "bid": "co.bundle.id",
+  "password": "password",
+  "auto_renew_product_id": "product_id.quarterly",
+  "notification_type": "INITIAL_BUY"
+}

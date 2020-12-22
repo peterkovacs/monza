@@ -13,10 +13,15 @@ module Monza
       DID_CHANGE_RENEWAL_STATUS = 'DID_CHANGE_RENEWAL_STATUS'
       DID_FAIL_TO_RENEW = 'DID_FAIL_TO_RENEW'
       DID_RECOVER = 'DID_RECOVER'
+      DID_RENEW = 'DID_RENEW'
       INITIAL_BUY = 'INITIAL_BUY'
       INTERACTIVE_RENEWAL = 'INTERACTIVE_RENEWAL'
-      RENEWAL = 'RENEWAL'
+      PRICE_INCREASE_CONSENT = 'PRICE_INCREASE_CONSENT'
       REFUND = 'REFUND'
+
+      # RENEWAL is deprecated in Sandbox environments. Scheduled to be
+      # deprecated in production in March 2021.
+      RENEWAL = 'RENEWAL'
     end
 
 
@@ -78,68 +83,71 @@ module Monza
       @environment = attributes['environment']
       @expiration_intent = attributes['expiration_intent']
 
-      @latest_receipt = attributes['latest_receipt'] || attributes['latest_expired_receipt']
+      @unified_receipt = attributes['unified_receipt']
+      @latest_receipt = @unified_receipt['latest_receipt']
       @notification_type = attributes['notification_type']
 
       if attributes['password'] 
         @password = attributes['password'] 
       end
 
-      # There'll only be one latest receipt info, so lets just flatten it out here
-      latest_receipt_info = attributes['latest_receipt_info']
-
-      # If the receipt is cancelled / expired, we'll get this instead
-      if latest_receipt_info.nil?
-        latest_receipt_info = attributes['latest_expired_receipt_info']
-      end
-
-      @bundle_id = latest_receipt_info['bid']
-      @bvrs = latest_receipt_info['bvrs'].to_i
-      @item_id = latest_receipt_info['item_id'].to_i
-      @product_id = latest_receipt_info['product_id']
-      @transaction_id = latest_receipt_info['transaction_id']
-      @original_transaction_id = latest_receipt_info['original_transaction_id']
-      @purchase_date = DateTime.parse(latest_receipt_info['purchase_date']) if latest_receipt_info['purchase_date']
-      @purchase_date_ms = Time.zone.at(latest_receipt_info['purchase_date_ms'].to_i / 1000)
-      @purchase_date_pst = date_for_pacific_time(latest_receipt_info['purchase_date_pst']) if latest_receipt_info['purchase_date_pst']
-      @original_purchase_date = DateTime.parse(latest_receipt_info['original_purchase_date']) if latest_receipt_info['original_purchase_date']
-      @original_purchase_date_ms = Time.zone.at(latest_receipt_info['original_purchase_date_ms'].to_i / 1000) 
-      @original_purchase_date_pst = date_for_pacific_time(latest_receipt_info['original_purchase_date_pst']) if latest_receipt_info['original_purchase_date_pst']
-      @web_order_line_item_id = latest_receipt_info['web_order_line_item_id']
-      @quantity = latest_receipt_info['quantity'].to_i
-      
-      @unique_identifier = latest_receipt_info['unique_identifier']
-      @unique_vendor_identifier = latest_receipt_info['unique_vendor_identifier']
-      
-      # Here we coerce the field names to match what the receipt verify response returns
-      if latest_receipt_info['expires_date_formatted']
-        @expires_date = DateTime.parse(latest_receipt_info['expires_date_formatted'])
-      end
-      if latest_receipt_info['expires_date']
-        @expires_date_ms = Time.zone.at(latest_receipt_info['expires_date'].to_i / 1000)
-      end
-      if latest_receipt_info['expires_date_formatted_pst']
-        @expires_date_pst = date_for_pacific_time(latest_receipt_info['expires_date_formatted_pst'])
-      end
-      if latest_receipt_info['is_in_intro_offer_period']
-        @is_in_intro_offer_period = latest_receipt_info['is_in_intro_offer_period'].to_bool
-      end
-      if latest_receipt_info['is_trial_period']
-        @is_trial_period = latest_receipt_info['is_trial_period'].to_bool
-      end
-      if latest_receipt_info['cancellation_date']
-        @cancellation_date = DateTime.parse(latest_receipt_info['cancellation_date'])
-      end
+      @bundle_id = attributes['bid']
+      @bvrs = attributes['bvrs'].to_i
 
       @latest_receipt_info = []
-      case attributes.dig('unified_receipt', 'latest_receipt_info')
+      case @unified_receipt['latest_receipt_info']
       when Array
-        attributes.dig('unified_receipt', 'latest_receipt_info').each do |transaction_receipt_attributes|
+        @unified_receipt['latest_receipt_info'].each do |transaction_receipt_attributes|
           @latest_receipt_info << TransactionReceipt.new(transaction_receipt_attributes)
         end
       when Hash
-        @latest_receipt_info << TransactionReceipt.new(attributes.dig('unified_receipt', 'latest_receipt_info'))
+        @latest_receipt_info << TransactionReceipt.new(@unified_receipt['latest_receipt_info'])
       end
+
+      latest_receipt_info = @latest_receipt_info.last
+
+      # Before processing the unified_receipt, this value was:
+      #   > An identifier that App Store Connect generates and the App Store
+      #   > uses to uniquely identify the in-app product purchased. Treat this
+      #   > value as a 64-bit integer. 
+      # Now the value is documented as "the auto-renewable subscription"
+      # instead of "the in-app product"
+      @item_id = attributes['auto_renew_adam_id'].to_i
+
+      @product_id = latest_receipt_info.product_id
+      @transaction_id = latest_receipt_info.transaction_id
+      @original_transaction_id = latest_receipt_info.original_transaction_id
+
+      @purchase_date = latest_receipt_info.purchase_date 
+      @purchase_date_ms = latest_receipt_info.purchase_date_ms
+      @purchase_date_pst = latest_receipt_info.purchase_date_pst
+
+      @original_purchase_date = latest_receipt_info.original_purchase_date 
+      @original_purchase_date_ms = latest_receipt_info.original_purchase_date_ms
+      @original_purchase_date_pst = latest_receipt_info.original_purchase_date_pst
+
+      @web_order_line_item_id = latest_receipt_info.web_order_line_item_id
+      @quantity = latest_receipt_info.quantity
+      
+      # These values are not documented, and are apparently only present in the
+      # now-deprecated latest_receipt_info.
+      @unique_identifier = attributes.dig('latest_receipt_info', 'unique_identifier')
+      @unique_vendor_identifier = attributes.dig('latest_receipt_info', 'unique_vendor_identifier')
+      
+      @expires_date = latest_receipt_info.expires_date 
+      @expires_date_ms = latest_receipt_info.expires_date_ms
+      @expires_date_pst = latest_receipt_info.expires_date_pst
+
+      @is_in_intro_offer_period = latest_receipt_info.is_in_intro_offer_period
+      @is_trial_period = latest_receipt_info.is_trial_period
+      @is_upgraded = latest_receipt_info.is_upgraded
+
+      @cancellation_date = latest_receipt_info.cancellation_date 
+      @cancellation_date_ms = latest_receipt_info.cancellation_date_ms
+      @cancellation_date_pst = latest_receipt_info.cancellation_date_pst
+
+      @cancellation_reason = latest_receipt_info.cancellation_reason
+
       @renewal_info = []
       if attributes.dig('unified_receipt', 'pending_renewal_info')
         attributes.dig('unified_receipt', 'pending_renewal_info').each do |renewal_info_attributes|
@@ -172,6 +180,10 @@ module Monza
 
     def did_recover?
       notification_type == Type::DID_RECOVER
+    end
+
+    def did_renew?
+      notification_type == Type::DID_RENEW
     end
 
     def initial_buy?
